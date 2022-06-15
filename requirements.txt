@@ -1,0 +1,6 @@
+Faker==13.13.0
+fastapi==0.78.0
+pydantic==1.9.1
+requests==2.22.0
+SQLAlchemy==1.4.37
+uvicorn==0.17.6
