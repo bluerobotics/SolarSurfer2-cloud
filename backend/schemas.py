@@ -27,3 +27,17 @@ default_rockblock_message = RockblockMessageBase(**{
     "iridium_cep": -1,
     "data": "aaaa0000",
 })
+
+class Payload(BaseModel):
+    linux_epoch: float
+    wind_angle: float
+    wind_speed: float
+    air_pressure: float
+    air_temperature: float
+    solar_panel_voltage: float
+    solar_panel_current: float
+
+class PayloadIdentified(Payload):
+    latitude: float
+    longitude: float
+    transmit_time: str
