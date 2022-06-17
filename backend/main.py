@@ -5,8 +5,8 @@ import json
 from pprint import pprint
 from typing import Any, List
 from fastapi import Depends, FastAPI, Request
-from schemas import RockblockMessageBase, default_rockblock_message, RockblockMessageRegistered
-from crud import create_rockblock_message, get_last_rockblock_message, get_rockblock_messages
+from schemas import RockblockMessageBase, default_rockblock_message, RockblockMessageRegistered, PayloadIdentified
+from crud import create_rockblock_message, get_last_rockblock_message, get_rockblock_messages, get_payloads
 import models
 from sqlalchemy.orm import Session
 from database import SessionLocal, engine
@@ -44,6 +44,10 @@ async def last_rockblock_message_route(db: Session = Depends(get_db)) -> Any:
 @app.get("/rockblock-messages", response_model=List[RockblockMessageRegistered])
 async def rockblock_messages_route(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)) -> Any:
     return get_rockblock_messages(db, skip, limit)
+
+@app.get("/payloads", response_model=List[PayloadIdentified])
+async def payloads_route(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)) -> Any:
+    return get_payloads(db, skip, limit)
 
 
 if __name__ == "__main__":
