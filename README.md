@@ -5,7 +5,7 @@
 Run `python3 SolarSurfer2-Cloud/backend/main.py`
 
 ### Server
-Currently the backend is running at `http://143.198.58.63:8000`
+Currently the backend is running at [http://143.198.58.63:8000](http://143.198.58.63:8000)
 
 ### Routes
 
