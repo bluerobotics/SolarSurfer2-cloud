@@ -1,9 +1,10 @@
 #! /usr/bin/env python3
 
 import uvicorn
+import json
 from pprint import pprint
 from typing import Any, List
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Request
 from schemas import RockblockMessageBase, default_rockblock_message, RockblockMessageRegistered
 from crud import create_rockblock_message, get_last_rockblock_message, get_rockblock_messages
 import models
@@ -28,8 +29,10 @@ app = FastAPI()
 async def root():
     return {"message": "Hello from the Solar Surfer 2 API!"}
 
-@app.post("/rockblock-messages", response_model=RockblockMessageBase)
-async def rockblock_web_hook_post_route(message: RockblockMessageBase, db: Session = Depends(get_db)):
+@app.post("/rockblock-messages")
+async def rockblock_web_hook_post_route(request: Request, db: Session = Depends(get_db)):
+    raw_message = await request.body()
+    message = RockblockMessageBase(**json.loads(raw_message))
     create_rockblock_message(db, message)
     pprint(message.dict())
     return message
