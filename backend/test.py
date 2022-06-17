@@ -1,5 +1,6 @@
 from datetime import datetime
-from random import randint, randbytes
+from random import randint, uniform
+import struct
 from faker import Faker
 from pprint import pprint
 import requests
@@ -19,7 +20,7 @@ message = RockblockMessageBase(**{
     "iridium_latitude": fake.coordinate(),
     "iridium_longitude": fake.coordinate(),
     "iridium_cep": randint(1, 10),
-    "data": str(randbytes(50)),
+    "data": struct.pack("7f", uniform(0, 9), uniform(0, 9), uniform(0, 9), uniform(0, 9), uniform(0, 9), uniform(0, 9), uniform(0, 9)).hex(),
 })
 print(">")
 pprint(message.dict())
