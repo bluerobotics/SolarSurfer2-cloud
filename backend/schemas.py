@@ -9,7 +9,7 @@ class RockblockMessageBase(BaseModel):
     iridium_latitude: float
     iridium_longitude: float
     iridium_cep: int
-    data: str
+    data: bytes
 
 class RockblockMessageRegistered(RockblockMessageBase):
     id: int
