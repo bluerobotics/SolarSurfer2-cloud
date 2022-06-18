@@ -5,6 +5,7 @@ import json
 from pprint import pprint
 from typing import Any, List
 from fastapi import Depends, FastAPI, Request
+from starlette.responses import Response as StarletteResponse
 from schemas import RockblockMessageBase, default_rockblock_message, RockblockMessageRegistered, PayloadIdentified
 from crud import create_rockblock_message, get_last_rockblock_message, get_rockblock_messages, get_payloads
 import models
@@ -12,6 +13,18 @@ from sqlalchemy.orm import Session
 from database import SessionLocal, engine
 
 models.Base.metadata.create_all(bind=engine)
+
+class PrettyJSONResponse(StarletteResponse):
+    media_type = "application/json"
+
+    def render(self, content: Any) -> bytes:
+        return json.dumps(
+            content,
+            ensure_ascii=False,
+            allow_nan=False,
+            indent=2,
+            separators=(", ", ": "),
+        ).encode(self.charset)
 
 def get_db():
     db = SessionLocal()
@@ -23,7 +36,11 @@ def get_db():
 last_rockblock_message = default_rockblock_message
 
 
-app = FastAPI()
+app = FastAPI(
+    title="Solar Surfer 2 API",
+    description="This thing is going to Hawaii, one way or another.",
+    default_response_class=PrettyJSONResponse,
+)
 
 @app.get("/")
 async def root():
