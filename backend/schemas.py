@@ -35,9 +35,23 @@ class Payload(BaseModel):
     air_pressure: float
     air_temperature: float
     solar_panel_voltage: float
-    solar_panel_current: float
+    solar_panel_power: float
+    heading: float
+    gps_lat: float
+    gps_lon: float
+    water_temp: float
+    roll: float
+    pitch: float
+    battery_current: float
+    battery_voltage: float
+    cpu_average_usage: float
+    memory_usage: float
+    available_disk_space: float
+    left_motor_pwm: float
+    right_motor_pwm: float
+    mission_status: str
 
 class PayloadIdentified(Payload):
-    latitude: float
-    longitude: float
-    transmit_time: str
+    iridium_latitude: float
+    iridium_longitude: float
+    transmit_time_utc: str
