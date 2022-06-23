@@ -17,6 +17,7 @@ def create_rockblock_message(db: Session, message: schemas.RockblockMessageBase)
         iridium_cep=message.iridium_cep,
         data=message.data,
     )
+    print('db', db_message)
     db.add(db_message)
     db.commit()
     db.refresh(db_message)
