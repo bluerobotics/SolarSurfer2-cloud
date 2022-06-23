@@ -49,7 +49,9 @@ async def root():
 @app.post("/rockblock-messages")
 async def rockblock_web_hook_post_route(request: Request, db: Session = Depends(get_db)):
     raw_message = await request.body()
+    print('raw', raw_message)
     message = RockblockMessageBase(**json.loads(raw_message))
+    print('message', message)
     create_rockblock_message(db, message)
     pprint(message.dict())
     return message
