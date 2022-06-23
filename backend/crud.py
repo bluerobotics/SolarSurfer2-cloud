@@ -32,8 +32,8 @@ def get_rockblock_messages(db: Session, skip: int = 0, limit: int = 100):
 def get_payloads(db: Session, skip: int = 0, limit: int = 100):
     messages = get_rockblock_messages(db, skip, limit)
     payloads = []
-    try:
-        for message in messages:
+    for message in messages:
+        try:
             parsed_message = schemas.RockblockMessageRegistered(**message.__dict__)
             hex_data = parsed_message.data
             byte_data = bytes.fromhex(hex_data.decode())
@@ -65,7 +65,6 @@ def get_payloads(db: Session, skip: int = 0, limit: int = 100):
                 iridium_longitude=parsed_message.iridium_longitude,
                 transmit_time_utc=parsed_message.transmit_time,
             ))
-    except Exception as error:
-        print(error)
+        except Exception as error:
+            print(error)
     return payloads
-
