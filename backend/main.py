@@ -5,6 +5,7 @@ import json
 from pprint import pprint
 from typing import Any, List
 from fastapi import Depends, FastAPI, Request
+from fastapi.staticfiles import StaticFiles
 from starlette.responses import Response as StarletteResponse
 from schemas import RockblockMessageBase, default_rockblock_message, RockblockMessageRegistered, PayloadIdentified
 from crud import create_rockblock_message, get_last_rockblock_message, get_rockblock_messages, get_payloads
@@ -42,9 +43,7 @@ app = FastAPI(
     default_response_class=PrettyJSONResponse,
 )
 
-@app.get("/")
-async def root():
-    return {"message": "Hello from the Solar Surfer 2 API!"}
+app.mount("/ui", StaticFiles(directory="../frontend", html = True), name="static")
 
 @app.post("/rockblock-messages")
 async def rockblock_web_hook_post_route(request: Request, db: Session = Depends(get_db)):
