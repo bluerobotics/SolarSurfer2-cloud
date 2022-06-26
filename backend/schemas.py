@@ -30,8 +30,8 @@ default_rockblock_message = RockblockMessageBase(**{
 
 class Payload(BaseModel):
     linux_epoch: float
-    wind_angle: float
-    wind_speed: float
+    time_boot_ms: float
+    time_unix_usec: float
     air_pressure: float
     air_temperature: float
     solar_panel_voltage: float

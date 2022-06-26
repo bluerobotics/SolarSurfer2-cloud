@@ -42,8 +42,8 @@ def get_payloads(db: Session, skip: int = 0, limit: int = 100):
             data = deserialize(byte_data)
             payloads.append(schemas.PayloadIdentified(
                 linux_epoch=0,
-                wind_angle=data['wind_angle'],
-                wind_speed=data['wind_speed'],
+                time_boot_ms=data['time_boot_ms'],
+                time_unix_usec=data['time_unix_usec'],
                 air_pressure=0,
                 air_temperature=data['air_temperature'],
                 solar_panel_voltage=data['solar_voltage'],
