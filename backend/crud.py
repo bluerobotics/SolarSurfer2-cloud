@@ -60,7 +60,7 @@ def get_payloads(db: Session, skip: int = 0, limit: int = 100):
                 battery_voltage=data['battery_voltage'],
                 cpu_average_usage=data['cpu'],
                 cpu_temperature=data['raspberry_temperature'],
-                sat_number=data['sat_number']
+                sat_number=data['sat_number'],
                 memory_usage=data['memory'],
                 available_disk_space=data['disk'],
                 left_motor_pwm=data['throttle_first'],
