@@ -29,27 +29,32 @@ default_rockblock_message = RockblockMessageBase(**{
 })
 
 class Payload(BaseModel):
-    linux_epoch: float
-    time_boot_ms: float
-    time_unix_usec: float
-    air_pressure: float
-    air_temperature: float
+    heading: float
+    battery_voltage: float
+    battery_current: float
     solar_panel_voltage: float
     solar_panel_power: float
-    heading: float
-    gps_lat: float
-    gps_lon: float
+    left_motor_pwm: float
+    right_motor_pwm: float
+    air_temperature: float
     water_temp: float
-    roll: float
-    pitch: float
-    battery_current: float
-    battery_voltage: float
     cpu_average_usage: float
     memory_usage: float
     available_disk_space: float
-    left_motor_pwm: float
-    right_motor_pwm: float
+    cpu_temperature: float
     mission_status: str
+    sat_number: float
+    gps_lat: float
+    gps_lon: float
+    gps_vdop: float
+    gps_hdop: float
+    time_boot_ms: float
+    time_unix_usec: float
+
+    linux_epoch: float
+    air_pressure: float
+    roll: float
+    pitch: float
 
 class PayloadIdentified(Payload):
     iridium_latitude: float
