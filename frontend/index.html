@@ -10,13 +10,57 @@
             height: 100%;
         }
     </style>
+      <style type="text/css">
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            width: 100%
+        }
+
+        #wrapper {
+            min-height: 100%;
+        }
+
+        #mapid {
+            height: 100%;
+            width: 100%;
+        }
+
+        #menu {
+            position: absolute;
+            z-index: 2000;
+            width: 20%;
+            background-color: azure;
+            margin: 5px;
+            margin-top: 7%;
+            border-radius: 10px;
+            padding: 10px;
+        }
+
+        #radius {
+            width: 100%;
+        }
+    </style>
 </head>
 
 <body>
-
+    <div id="menu">
+        <form action="/generate" method="post">
+            <label>Color code</label><br>
+            <select id="color" onchange="replot(this)">
+                <option value="point['solar_panel_power'].map(0,150,0,100)">Solar Power</option>
+                <option value="point['battery_voltage'].map(130,220,0,100)">Battery Voltage</option>
+              </select>
+        </form>
+    </div>
     <div id="map"></div>
 
     <script>
+        var map
+        Number.prototype.map = function (in_min, in_max, out_min, out_max) {
+            return (this - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+        }
         // linear color interpolation from red to green
         function perc2color(perc) {
             var r, g, b = 0;
@@ -30,6 +74,64 @@
             }
             var h = r * 0x10000 + g * 0x100 + b * 0x1;
             return '#' + ('000000' + h.toString(16)).slice(-6);
+        }
+
+
+    function replot ()
+    {
+        fetch("/payloads?skip=0&limit=100000")
+            .then(res => res.json())
+            .then(data => {
+                const expression = document.getElementById('color').value
+                total = data.length
+                for (let n_point in data) {
+                    point = data[n_point]
+                    point["color"] = perc2color(eval(expression))
+                    point["heading"] = (point["heading"] * 360 / 255),
+                        point["solar_panel_voltage"] = point["solar_panel_voltage"] * 64 / 255,
+                        point["battery_current"] = point["battery_current"] * 64 / 255
+                    point["battery_voltage"] = point["battery_voltage"] * 20 / 255
+                    point["left_motor_pwm"] = (point["left_motor_pwm"] - 127) * 100 / 127
+                    point["right_motor_pwm"] = (point["right_motor_pwm"] - 127) * 100 / 127
+                }
+                if (map == undefined) {
+                    const last = data[data.length - 1]
+                    map = L.map('map').setView([last["gps_lat"], last["gps_lon"]], 13);
+                    L.tileLayer('http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+                        maxZoom: 20,
+                        subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
+                    }).addTo(map);
+                }
+
+                for (let n_point = 0; n_point < data.length - 2; n_point++) {
+                    point = data[n_point]
+                    next_point = data[n_point+1]
+                    L.polyline([point, next_point].map(point => [point["gps_lat"], point["gps_lon"]]), {color:point["color"]}).addTo(map)
+                };
+
+                for (const point of data) {
+                    let marker = L.marker([point["gps_lat"], point["gps_lon"]], {
+                        title: JSON.stringify(point, null, 2),
+                        rotationAngle: point["heading"],
+                        icon: L.divIcon({
+                            html: `
+                                <svg style="width:24px;height:24px" viewBox="0 0 24 24">
+                                    <path fill="${point["color"]}" d="M15,20H9V12H4.16L12,4.16L19.84,12H15V20Z" />
+                                </svg>`,
+                            className: "",
+                            iconSize: [24, 24],
+                            iconAnchor: [12, 12],
+                        })
+
+                    })
+
+                    map.on('mouseover', function (ev) {
+                        ev?.layer?.openPopup()
+                    })
+
+                    marker.addTo(map);
+                }
+            })
         }
 
         //From: https://github.com/bbecquet/Leaflet.RotatedMarker/blob/master/leaflet.rotatedMarker.js
@@ -91,58 +193,7 @@
             });
         })();
 
-        fetch("/payloads?skip=0&limit=100000")
-            .then(res => res.json())
-            .then(data => {
-                total = data.length
-                for (let n_point in data) {
-                    point = data[n_point]
-                    point["color"] = perc2color(100*n_point/total)
-                    point["heading"] = (point["heading"] * 360 / 255),
-                        point["solar_panel_voltage"] = point["solar_panel_voltage"] * 64 / 255,
-                        point["battery_current"] = point["battery_current"] * 64 / 255
-                    point["battery_voltage"] = point["battery_voltage"] * 20 / 255
-                    point["left_motor_pwm"] = (point["left_motor_pwm"] - 127) * 100 / 127
-                    point["right_motor_pwm"] = (point["right_motor_pwm"] - 127) * 100 / 127
-                }
-                const last = data[data.length - 1]
-                var map = L.map('map').setView([last["gps_lat"], last["gps_lon"]], 13);
-
-                L.tileLayer('http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
-                    maxZoom: 20,
-                    subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
-                }).addTo(map);
-
-                for (let n_point = 0; n_point < data.length - 2; n_point++) {
-                    point = data[n_point]
-                    next_point = data[n_point+1]
-                    L.polyline([point, next_point].map(point => [point["gps_lat"], point["gps_lon"]]), {color:point["color"]}).addTo(map)
-                };
-
-                for (const point of data) {
-                    let marker = L.marker([point["gps_lat"], point["gps_lon"]], {
-                        title: JSON.stringify(point, null, 2),
-                        rotationAngle: point["heading"],
-                        icon: L.divIcon({
-                            html: `
-                                <svg style="width:24px;height:24px" viewBox="0 0 24 24">
-                                    <path fill="${point["color"]}" d="M15,20H9V12H4.16L12,4.16L19.84,12H15V20Z" />
-                                </svg>`,
-                            className: "",
-                            iconSize: [24, 24],
-                            iconAnchor: [12, 12],
-                        })
-
-                    })
-
-                    map.on('mouseover', function (ev) {
-                        ev?.layer?.openPopup()
-                    })
-
-                    marker.addTo(map);
-                }
-            })
-
+        replot()
     </script>
 </body>
 
