@@ -17,6 +17,21 @@
     <div id="map"></div>
 
     <script>
+        // linear color interpolation from red to green
+        function perc2color(perc) {
+            var r, g, b = 0;
+            if(perc < 50) {
+                r = 255;
+                g = Math.round(5.1 * perc);
+            }
+            else {
+                g = 255;
+                r = Math.round(510 - 5.10 * perc);
+            }
+            var h = r * 0x10000 + g * 0x100 + b * 0x1;
+            return '#' + ('000000' + h.toString(16)).slice(-6);
+        }
+
         //From: https://github.com/bbecquet/Leaflet.RotatedMarker/blob/master/leaflet.rotatedMarker.js
         (function () {
             // save these original methods before they are overwritten
@@ -79,8 +94,10 @@
         fetch("/payloads?skip=0&limit=100000")
             .then(res => res.json())
             .then(data => {
-
-                for (let point of data) {
+                total = data.length
+                for (let n_point in data) {
+                    point = data[n_point]
+                    point["color"] = perc2color(100*n_point/total)
                     point["heading"] = (point["heading"] * 360 / 255),
                         point["solar_panel_voltage"] = point["solar_panel_voltage"] * 64 / 255,
                         point["battery_current"] = point["battery_current"] * 64 / 255
@@ -96,23 +113,26 @@
                     subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
                 }).addTo(map);
 
-                const svgIcon = L.divIcon({
-                    html: `
-            <svg style="width:24px;height:24px" viewBox="0 0 24 24">
-                <path fill="blue" d="M15,20H9V12H4.16L12,4.16L19.84,12H15V20Z" />
-            </svg>`,
-                    className: "",
-                    iconSize: [24, 24],
-                    iconAnchor: [12, 12],
-                });
-
-                L.polyline(data.map(point => [point["gps_lat"], point["gps_lon"]])).addTo(map)
+                for (let n_point = 0; n_point < data.length - 2; n_point++) {
+                    point = data[n_point]
+                    next_point = data[n_point+1]
+                    L.polyline([point, next_point].map(point => [point["gps_lat"], point["gps_lon"]]), {color:point["color"]}).addTo(map)
+                };
 
                 for (const point of data) {
                     let marker = L.marker([point["gps_lat"], point["gps_lon"]], {
                         title: JSON.stringify(point, null, 2),
                         rotationAngle: point["heading"],
-                        icon: svgIcon,
+                        icon: L.divIcon({
+                            html: `
+                                <svg style="width:24px;height:24px" viewBox="0 0 24 24">
+                                    <path fill="${point["color"]}" d="M15,20H9V12H4.16L12,4.16L19.84,12H15V20Z" />
+                                </svg>`,
+                            className: "",
+                            iconSize: [24, 24],
+                            iconAnchor: [12, 12],
+                        })
+
                     })
 
                     map.on('mouseover', function (ev) {
