@@ -58,6 +58,7 @@
 
     <script>
         var map
+        var layer
         Number.prototype.map = function (in_min, in_max, out_min, out_max) {
             return (this - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
         }
@@ -97,16 +98,18 @@
                 if (map == undefined) {
                     const last = data[data.length - 1]
                     map = L.map('map').setView([last["gps_lat"], last["gps_lon"]], 13);
-                    L.tileLayer('http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+                    layer = L.layerGroup()
+                    layer.addTo(map);
+                }
+                layer.clearLayers();
+                L.tileLayer('http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
                         maxZoom: 20,
                         subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
-                    }).addTo(map);
-                }
-
+                    }).addTo(layer);
                 for (let n_point = 0; n_point < data.length - 2; n_point++) {
                     point = data[n_point]
                     next_point = data[n_point+1]
-                    L.polyline([point, next_point].map(point => [point["gps_lat"], point["gps_lon"]]), {color:point["color"]}).addTo(map)
+                    L.polyline([point, next_point].map(point => [point["gps_lat"], point["gps_lon"]]), {color:point["color"]}).addTo(layer)
                 };
 
                 for (const point of data) {
@@ -129,7 +132,7 @@
                         ev?.layer?.openPopup()
                     })
 
-                    marker.addTo(map);
+                    marker.addTo(layer);
                 }
             })
         }
