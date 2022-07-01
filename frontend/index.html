@@ -29,13 +29,14 @@
             width: 100%;
         }
 
-        #menu {
+        #points-color-selector {
             position: absolute;
             z-index: 2000;
-            width: 20%;
-            background-color: azure;
-            margin: 5px;
-            margin-top: 7%;
+            width: auto;
+            background-color: #2699D0;
+            color: white;
+            margin: 10px;
+            margin-top: 12vh;
             border-radius: 10px;
             padding: 10px;
         }
@@ -47,13 +48,13 @@
 </head>
 
 <body>
-    <div id="menu">
+    <div id="points-color-selector">
         <form action="/generate" method="post">
             <label>Color code</label><br>
             <select id="color" onchange="replot(this)">
                 <option value="point['solar_panel_power'].map(0,150,0,100)">Solar Power</option>
                 <option value="point['battery_voltage'].map(130,220,0,100)">Battery Voltage</option>
-              </select>
+            </select>
         </form>
     </div>
     <div id="map"></div>
