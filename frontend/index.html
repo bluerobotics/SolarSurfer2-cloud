@@ -72,9 +72,17 @@
     </div>
     <div id="status-box">
         <span>Last update: </span><span id="last-update-time-span"></span></br>
-        <span>Last solar power: </span><span id="current-solar-power-span"></span><span> W</span></br>
-        <span>Last battery voltage: </span><span id="current-battery-voltage-span"></span><span> V</span></br>
-        <span>Last power consumption: </span><span id="current-power-consumption-span"></span><span> W</span>
+        <hr />
+        <strong>Last Segment:</strong><br />
+        <span>Speed: </span><span id="current-speed-span"></span><span> m/s</span><br />
+        <span>Solar power: </span><span id="current-solar-power-span"></span><span> W</span><br />
+        <span>Battery voltage: </span><span id="current-battery-voltage-span"></span><span> V</span><br />
+        <span>Power consumption: </span><span id="current-power-consumption-span"></span><span> W</span><br />
+        <span>Net energy: </span><span id="current-net-energy-span"></span><span> Wh</span>
+        <hr />
+        <strong>Trip:</strong><br />
+        <span>Total distance: </span><span id="total-distance-span"></span><span> km</span><br />
+        <span>Total energy: </span><span id="total-energy-span"></span><span> Wh</span>
     </br>
     </div>
 
@@ -88,7 +96,6 @@
         }
         function perc2color(percentage, minHue = 0, maxHue = 180) {
           const hue = percentage/100 * (maxHue - minHue) + minHue;
-          console.log(hue);
           return `hsl(${hue}, 100%, 50%)`;
         }
 
@@ -111,8 +118,17 @@
                     document.getElementById('current-solar-power-span').innerHTML = currentSolarPowerSpan
                     const currentBatteryVoltage = parseFloat(lastMessage['battery_voltage']).toFixed(2)
                     document.getElementById('current-battery-voltage-span').innerHTML = currentBatteryVoltage
-                    const currentPower = (parseFloat(lastMessage['battery_voltage'])*parseFloat(lastMessage['battery_current'])).toFixed(2)
+                    const currentPower = parseFloat(lastMessage['battery_power']).toFixed(1)
                     document.getElementById('current-power-consumption-span').innerHTML = currentPower
+                    const currentSpeed = parseFloat(lastMessage['speed']).toFixed(1)
+                    document.getElementById('current-speed-span').innerHTML = currentSpeed
+                    const netEnergy = parseFloat(lastMessage['net_energy']).toFixed(0)
+                    const netEnergySign = netEnergy > 0 ? "+" : ""
+                    document.getElementById('current-net-energy-span').innerHTML = netEnergySign+netEnergy
+                    const totalDistance = parseFloat(lastMessage['total_distance']).toFixed(1)
+                    document.getElementById('total-distance-span').innerHTML = totalDistance
+                    const totalEnergy = parseFloat(lastMessage['total_energy_consumed']).toFixed(0)
+                    document.getElementById('total-energy-span').innerHTML = totalEnergy
                     const lastUpdateDateTime = new Date(parseFloat(lastMessage['time_unix_usec'] / 1000))
                     const timeSinceLastUpdate = moment(lastUpdateDateTime).fromNow();
                     document.getElementById('last-update-time-span').innerHTML = timeSinceLastUpdate
@@ -120,14 +136,35 @@
 
                 for (let n_point in data) {
                     point = data[n_point]
-                    console.log(point['battery_voltage'].map(160,210,0,100)+"%")
                     point["color"] = eval(expression)
                     point["heading"] = (point["heading"] * 360 / 255),
-                        point["solar_panel_voltage"] = point["solar_panel_voltage"] * 64 / 255,
-                        point["battery_current"] = point["battery_current"] * 64 / 255
+                    point["solar_panel_voltage"] = point["solar_panel_voltage"] * 64 / 255,
+                    point["battery_current"] = point["battery_current"] * 64 / 255
                     point["battery_voltage"] = point["battery_voltage"] * 20 / 255
+                    point["battery_power"] = point["battery_voltage"]*point["battery_current"]
                     point["left_motor_pwm"] = (point["left_motor_pwm"] - 127) * 100 / 127
                     point["right_motor_pwm"] = (point["right_motor_pwm"] - 127) * 100 / 127
+                    point["distance_from_last"] = 0
+                    point["total_distance"] = 0
+                    point["time_since_last"] = 1800
+                    point["speed"] = 0
+                    point["total_energy_consumed"] = 0
+                    point["energy_generated"] = 0
+                    point["energy_consumed"] = 0
+                    point["net_energy"] = 0
+                    if ( n_point > 0 ) {
+                        last = data[n_point-1]
+                        const thisCoord = L.latLng(point["gps_lat"],point["gps_lon"])
+                        const lastCoord = L.latLng(last["gps_lat"],last["gps_lon"])
+                        point["distance_from_last"] = lastCoord.distanceTo(thisCoord)
+                        point["time_since_last"] = (point["time_boot_ms"] - last["time_boot_ms"])/1000
+                        point["speed"] = point["distance_from_last"]/point["time_since_last"]
+                        point["total_distance"] = last["total_distance"]+point["distance_from_last"]
+                        point["energy_generated"] = point["solar_panel_power"]*point["time_since_last"]/3600
+                        point["energy_consumed"] = point["battery_voltage"]*point["battery_current"]*point["time_since_last"]/3600
+                        point["net_energy"] = point["energy_generated"]-point["energy_consumed"]
+                        point["total_energy_consumed"] = last["total_energy_consumed"]+point["energy_consumed"]
+                    }
                 }
                 if (map == undefined) {
                     const last = data[data.length - 1]
