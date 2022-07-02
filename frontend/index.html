@@ -1,19 +1,25 @@
 <html>
 <meta http-equiv="refresh" content="600">
+
 <head>
     <title>Solar Turtle Monitoring Room</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.8.0/leaflet.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.8.0/leaflet.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-0evHe/X+R7YkIZDRvuzKMRqM+OrBnVFBL6DOitfPri4tjfHxaWutUpFmBp4vmVor" crossorigin="anonymous">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/js/bootstrap.bundle.min.js" integrity="sha384-pprn3073KE6tl6bjs2QrFaJGz5/SUsLqktiwsUTF55Jfv3qYSDhgCecCxMW52nD2" crossorigin="anonymous"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-0evHe/X+R7YkIZDRvuzKMRqM+OrBnVFBL6DOitfPri4tjfHxaWutUpFmBp4vmVor" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-pprn3073KE6tl6bjs2QrFaJGz5/SUsLqktiwsUTF55Jfv3qYSDhgCecCxMW52nD2"
+        crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.3/moment.min.js"></script>
+    <script src="https://unpkg.com/vue@3"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
     <style>
         #map {
             width: 100%;
             height: 100%;
         }
     </style>
-      <style type="text/css">
+    <style type="text/css">
         html,
         body {
             height: 100%;
@@ -49,7 +55,7 @@
             background-color: #2699D0;
             color: white;
             margin: 10px;
-            margin-top: 26vh;
+            margin-top: 28vh;
             border-radius: 10px;
             padding: 10px;
         }
@@ -61,35 +67,55 @@
 </head>
 
 <body>
-    <div id="points-color-selector">
-        <form action="/generate" method="post">
-            <label>Color code</label><br>
-            <select id="color" onchange="replot(this)">
-                <option value="point['solar_panel_power'].map(0,180,0,100)">Solar Power</option>
-                <option value="point['battery_voltage'].map(130,220,0,100)">Battery Voltage</option>
-            </select>
-        </form>
-    </div>
-    <div id="status-box">
-        <span>Last update: </span><span id="last-update-time-span"></span></br>
-        <span>Last solar power: </span><span id="current-solar-power-span"></span><span> W</span></br>
-        <span>Last battery voltage: </span><span id="current-battery-voltage-span"></span><span> V</span></br>
-        <span>Last power consumption: </span><span id="current-power-consumption-span"></span><span> W</span>
-    </br>
-    </div>
+    <div id="app">
+        <div id="points-color-selector">
+            <form @submit.prevent>
+                <label>Color code</label><br>
+                <select v-model="expression" id="color" @change="replot()">
+                    <option value="point['solar_panel_power'].map(0,180,0,100)">Solar Power</option>
+                    <option value="point['battery_voltage'].map(13.0,16.5,0,100)">Battery Voltage</option>
+                    <option value="(point['battery_voltage']*point['battery_current']).map(0,100,100,0)">Power
+                        Consumption</option><br>
+                        <option value="point['speed'].map(0,1.5,0,100)">Speed</option>
+                        <option value="point['average_thrust'].map(0,20,0,100)">Average Thrust</option>
+                </select>
+                <br>
+                <!-- <input type="text" v-model="expression" @change="replot()" /><br> -->
+                <label>Points: {{numberOfPoints}}</label><br>
+                <input type="range" min="10" :max="dataSeries.length" step="1" v-model="numberOfPoints"
+                    @change="replot()" style="width: 100%;">
 
-    <div id="map"></div>
+            </form>
+        </div>
+        <div id="status-box">
+            <span>Last update: {{ lastUpdated }}</span></br>
+            <span>Last solar power: {{ last ? last["solar_panel_power"].toFixed(2) : "N/A" }} W</span></br>
+            <span>Last battery voltage: {{ last ? last["battery_voltage"].toFixed(2) : "N/A" }} V</span></br>
+            <span>Last power consumption: {{ last ? (last["battery_voltage"] * last["battery_current"]).toFixed(2) :
+                "N/A"}} W</span></br>
+            <span>Last speed: {{ last ? last["speed"].toFixed(2) : "N/A"}} m/s</span><br>
+            <span>Total Distance: {{ totalDistance.toFixed(3) }} km</span>
+            </br>
+        </div>
+
+        <div id="map"></div>
+    </div>
 
     <script>
-        var map
-        var layer
         Number.prototype.map = function (in_min, in_max, out_min, out_max) {
             return (this - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
         }
         // linear color interpolation from red to green
         function perc2color(perc) {
+            if (isNaN(perc)) {
+                perc = 0
+            }
+            // cap at 100%
+            perc = Math.min(100, perc)
+            //cap at 0%
+            perc = Math.max(0, perc)
             var r, g, b = 0;
-            if(perc < 50) {
+            if (perc < 50) {
                 r = 255;
                 g = Math.round(5.1 * perc);
             }
@@ -101,147 +127,212 @@
             return '#' + ('000000' + h.toString(16)).slice(-6);
         }
 
-    function sleep (time) {
-        return new Promise((resolve) => setTimeout(resolve, time));
-    }
+        Vue.createApp({
+            el: "#app",
+            data() {
+                return {
+                    dataSeries: [],
+                    expression: "point['solar_panel_power'].map(0,180,0,100)",
+                    numberOfPoints: -1,
+                    last: null,
+                    currentSeries: [],
+                };
+            },
+            methods: {
+                // from https://stackoverflow.com/questions/18883601/function-to-calculate-distance-between-two-coordinates
+                deg2rad(deg) {
+                    return deg * (Math.PI / 180)
+                },
 
-    function replot ()
-    {
-        fetch("/payloads?skip=0&limit=100000")
-            .then(res => res.json())
-            .then(data => {
-                const expression = document.getElementById('color').value
-                total = data.length
+                getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+                    var R = 6371; // Radius of the earth in km
+                    var dLat = this.deg2rad(lat2 - lat1);  // deg2rad below
+                    var dLon = this.deg2rad(lon2 - lon1);
+                    var a =
+                        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                        Math.cos(this.deg2rad(lat1)) * Math.cos(this.deg2rad(lat2)) *
+                        Math.sin(dLon / 2) * Math.sin(dLon / 2)
+                        ;
+                    var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                    var d = R * c; // Distance in km
+                    return d;
+                },
 
-                // Populate status box
-                sleep(100).then(() => {
-                    const lastMessage = data[data.length - 1]    // Do something after the sleep!
-                    const currentSolarPowerSpan = lastMessage['solar_panel_power']
-                    document.getElementById('current-solar-power-span').innerHTML = currentSolarPowerSpan
-                    const currentBatteryVoltage = parseFloat(lastMessage['battery_voltage']).toFixed(2)
-                    document.getElementById('current-battery-voltage-span').innerHTML = currentBatteryVoltage
-                    const currentPower = (parseFloat(lastMessage['battery_voltage'])*parseFloat(lastMessage['battery_current'])).toFixed(2)
-                    document.getElementById('current-power-consumption-span').innerHTML = currentPower
-                    const lastUpdateDateTime = new Date(parseFloat(lastMessage['time_unix_usec'] / 1000))
-                    const timeSinceLastUpdate = moment(lastUpdateDateTime).fromNow();
-                    document.getElementById('last-update-time-span').innerHTML = timeSinceLastUpdate
-                });
+                fetchNewData() {
+                    axios.get("/payloads?skip=0&limit=100000")
+                        .then(result => {
+                            var data = result.data
+                            total = data.length
+                            if (this.numberOfPoints === -1) {
+                                this.numberOfPoints = total
+                            }
 
-                for (let n_point in data) {
-                    point = data[n_point]
-                    point["color"] = perc2color(eval(expression))
-                    point["heading"] = (point["heading"] * 360 / 255),
-                        point["solar_panel_voltage"] = point["solar_panel_voltage"] * 64 / 255,
-                        point["battery_current"] = point["battery_current"] * 64 / 255
-                    point["battery_voltage"] = point["battery_voltage"] * 20 / 255
-                    point["left_motor_pwm"] = (point["left_motor_pwm"] - 127) * 100 / 127
-                    point["right_motor_pwm"] = (point["right_motor_pwm"] - 127) * 100 / 127
-                }
-                if (map == undefined) {
-                    const last = data[data.length - 1]
-                    map = L.map('map').setView([last["gps_lat"], last["gps_lon"]], 13);
-                    layer = L.layerGroup()
-                    layer.addTo(map);
-                }
-                layer.clearLayers();
-                L.tileLayer('http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+                            this.dataSeries = []
+                            for (let n_point in data) {
+                                point = data[n_point]
+                                point["heading"] = (point["heading"] * 360 / 255),
+                                    point["solar_panel_voltage"] = point["solar_panel_voltage"] * 64 / 255,
+                                    point["battery_current"] = point["battery_current"] * 64 / 255
+                                point["battery_voltage"] = point["battery_voltage"] * 20 / 255
+                                point["left_motor_pwm"] = (point["left_motor_pwm"] - 127) * 100 / 127
+                                point["right_motor_pwm"] = (point["right_motor_pwm"] - 127) * 100 / 127
+                                point["power_consumption"] = point["battery_current"] * point["battery_voltage"]
+                                point["average_thrust"] = (Math.abs(point["left_motor_pwm"]) + Math.abs(point["right_motor_pwm"])) / 2
+                                // timedelta/speed calculation
+                                if (n_point > 0) {
+                                    const previous_point = data[n_point - 1]
+                                    const previous_time = previous_point["time_unix_usec"]
+                                    const time = point["time_unix_usec"]
+                                    point["timedelta_s"] = (time - previous_time) / 1e6
+                                    lat1 = previous_point["gps_lat"]
+                                    lon1 = previous_point["gps_lon"]
+                                    lat2 = point["gps_lat"]
+                                    lon2 = point["gps_lon"]
+                                    point["distance_travelled_m"] = this.getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) * 1000
+                                    point["speed"] = point["distance_travelled_m"] / point["timedelta_s"]
+                                }
+                                else {
+                                    point["timedelta_s"] = 0
+                                    point["distance_travelled_m"] = 0
+                                    point["speed"] = 0
+                                }
+                                this.dataSeries.push(point)
+                            }
+                            this.last = this.dataSeries[this.dataSeries.length - 1]
+                            this.replot()
+                        })
+                },
+                replot() {
+
+                    this.currentSeries = this.dataSeries.slice(this.dataSeries.length - this.numberOfPoints)
+                    if (this.map == undefined) {
+                        const last = this.currentSeries[this.currentSeries.length - 1]
+                        this.map = L.map('map').setView([last["gps_lat"], last["gps_lon"]], 13);
+                        this.layer = L.layerGroup()
+                        this.layer.addTo(this.map);
+                    }
+                    for (let n_point in this.currentSeries) {
+                        point = this.currentSeries[n_point]
+                        point["color"] = perc2color(eval(this.expression))
+
+                    }
+                    this.layer.clearLayers();
+                    L.tileLayer('http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
                         maxZoom: 20,
                         subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
-                    }).addTo(layer);
-                for (let n_point = 0; n_point < data.length - 2; n_point++) {
-                    point = data[n_point]
-                    next_point = data[n_point+1]
-                    L.polyline([point, next_point].map(point => [point["gps_lat"], point["gps_lon"]]), {color:point["color"]}).addTo(layer)
-                };
+                    }).addTo(this.layer);
+                    for (let n_point = 0; n_point < this.currentSeries.length - 2; n_point++) {
+                        point = this.currentSeries[n_point]
+                        next_point = this.currentSeries[n_point + 1]
+                        L.polyline([point, next_point].map(point => [point["gps_lat"], point["gps_lon"]]), { color: point["color"] }).addTo(this.layer)
+                    };
 
-                for (const point of data) {
-                    let marker = L.marker([point["gps_lat"], point["gps_lon"]], {
-                        title: JSON.stringify(point, null, 2),
-                        rotationAngle: point["heading"],
-                        icon: L.divIcon({
-                            html: `
-                                <svg style="width:24px;height:24px" viewBox="0 0 24 24">
-                                    <path fill="${point["color"]}" d="M15,20H9V12H4.16L12,4.16L19.84,12H15V20Z" />
-                                </svg>`,
-                            className: "",
-                            iconSize: [24, 24],
-                            iconAnchor: [12, 12],
+                    for (const point of this.currentSeries) {
+                        let marker = L.marker([point["gps_lat"], point["gps_lon"]], {
+                            title: JSON.stringify(point, null, 2),
+                            rotationAngle: point["heading"],
+                            icon: L.divIcon({
+                                html: `
+                                        <svg style="width:24px;height:24px" viewBox="0 0 24 24">
+                                            <path fill="${point["color"]}" d="M15,20H9V12H4.16L12,4.16L19.84,12H15V20Z" />
+                                        </svg>`,
+                                className: "",
+                                iconSize: [24, 24],
+                                iconAnchor: [12, 12],
+                            })
+
                         })
 
-                    })
+                        this.map.on('mouseover', function (ev) {
+                            ev?.layer?.openPopup()
+                        })
 
-                    map.on('mouseover', function (ev) {
-                        ev?.layer?.openPopup()
-                    })
-
-                    marker.addTo(layer);
-                }
-            })
-        }
-
-        //From: https://github.com/bbecquet/Leaflet.RotatedMarker/blob/master/leaflet.rotatedMarker.js
-        (function () {
-            // save these original methods before they are overwritten
-            var proto_initIcon = L.Marker.prototype._initIcon;
-            var proto_setPos = L.Marker.prototype._setPos;
-
-            var oldIE = (L.DomUtil.TRANSFORM === 'msTransform');
-
-            L.Marker.addInitHook(function () {
-                var iconOptions = this.options.icon && this.options.icon.options;
-                var iconAnchor = iconOptions && this.options.icon.options.iconAnchor;
-                if (iconAnchor) {
-                    iconAnchor = (iconAnchor[0] + 'px ' + iconAnchor[1] + 'px');
-                }
-                this.options.rotationOrigin = this.options.rotationOrigin || iconAnchor || 'center bottom';
-                this.options.rotationAngle = this.options.rotationAngle || 0;
-
-                // Ensure marker keeps rotated during dragging
-                this.on('drag', function (e) { e.target._applyRotation(); });
-            });
-
-            L.Marker.include({
-                _initIcon: function () {
-                    proto_initIcon.call(this);
-                },
-
-                _setPos: function (pos) {
-                    proto_setPos.call(this, pos);
-                    this._applyRotation();
-                },
-
-                _applyRotation: function () {
-                    if (this.options.rotationAngle) {
-                        this._icon.style[L.DomUtil.TRANSFORM + 'Origin'] = this.options.rotationOrigin;
-
-                        if (oldIE) {
-                            // for IE 9, use the 2D rotation
-                            this._icon.style[L.DomUtil.TRANSFORM] = 'rotate(' + this.options.rotationAngle + 'deg)';
-                        } else {
-                            // for modern browsers, prefer the 3D accelerated version
-                            this._icon.style[L.DomUtil.TRANSFORM] += ' rotateZ(' + this.options.rotationAngle + 'deg)';
-                        }
+                        marker.addTo(this.layer);
                     }
                 },
 
-                setRotationAngle: function (angle) {
-                    this.options.rotationAngle = angle;
-                    this.update();
-                    return this;
+
+                //From: https://github.com/bbecquet/Leaflet.RotatedMarker/blob/master/leaflet.rotatedMarker.js
+                createMap() {
+                    // save these original methods before they are overwritten
+                    var proto_initIcon = L.Marker.prototype._initIcon;
+                    var proto_setPos = L.Marker.prototype._setPos;
+
+                    var oldIE = (L.DomUtil.TRANSFORM === 'msTransform');
+
+                    L.Marker.addInitHook(function () {
+                        var iconOptions = this.options.icon && this.options.icon.options;
+                        var iconAnchor = iconOptions && this.options.icon.options.iconAnchor;
+                        if (iconAnchor) {
+                            iconAnchor = (iconAnchor[0] + 'px ' + iconAnchor[1] + 'px');
+                        }
+                        this.options.rotationOrigin = this.options.rotationOrigin || iconAnchor || 'center bottom';
+                        this.options.rotationAngle = this.options.rotationAngle || 0;
+
+                        // Ensure marker keeps rotated during dragging
+                        this.on('drag', function (e) { e.target._applyRotation(); });
+                    });
+
+                    L.Marker.include({
+                        _initIcon: function () {
+                            proto_initIcon.call(this);
+                        },
+
+                        _setPos: function (pos) {
+                            proto_setPos.call(this, pos);
+                            this._applyRotation();
+                        },
+
+                        _applyRotation: function () {
+                            if (this.options.rotationAngle) {
+                                this._icon.style[L.DomUtil.TRANSFORM + 'Origin'] = this.options.rotationOrigin;
+
+                                if (oldIE) {
+                                    // for IE 9, use the 2D rotation
+                                    this._icon.style[L.DomUtil.TRANSFORM] = 'rotate(' + this.options.rotationAngle + 'deg)';
+                                } else {
+                                    // for modern browsers, prefer the 3D accelerated version
+                                    this._icon.style[L.DomUtil.TRANSFORM] += ' rotateZ(' + this.options.rotationAngle + 'deg)';
+                                }
+                            }
+                        },
+
+                        setRotationAngle: function (angle) {
+                            this.options.rotationAngle = angle;
+                            this.update();
+                            return this;
+                        },
+
+                        setRotationOrigin: function (origin) {
+                            this.options.rotationOrigin = origin;
+                            this.update();
+                            return this;
+                        }
+                    });
                 },
+            },
+            mounted() {
+                this.createMap()
+                this.fetchNewData()
+                setInterval(this.fetchNewData, 30000);
+            },
+            computed: {
+                lastUpdated() {
+                    return this.last ? moment(new Date(parseFloat(this.last['time_unix_usec'] / 1000))).fromNow() : "n/a"
+                },
+                totalDistance() {
+                    // total distance in km
+                    let sum = 0
+                    for (const point of this.currentSeries) {
+                        sum = sum + point["distance_travelled_m"]
+                    }
+                    return sum / 1000
+                    // return this.currentSeries.map(item => item.distance_travelled_m).reduce((prev, next) => prev + next);
 
-                setRotationOrigin: function (origin) {
-                    this.options.rotationOrigin = origin;
-                    this.update();
-                    return this;
                 }
-            });
-        })();
-
-        replot()
-        setInterval(replot, 30000);
+            }
+        }).mount("#app")
     </script>
 </body>
 
 </html>
-
