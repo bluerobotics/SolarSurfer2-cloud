@@ -65,8 +65,8 @@
         <form action="/generate" method="post">
             <label>Color code</label><br>
             <select id="color" onchange="replot(this)">
-                <option value="point['solar_panel_power'].map(0,180,0,100)">Solar Power</option>
-                <option value="point['battery_voltage'].map(130,220,0,100)">Battery Voltage</option>
+                <option value="perc2color(point['solar_panel_power'].map(0,180,0,100),0,180)">Solar Power</option>
+                <option value="perc2color(point['battery_voltage'].map(160,210,0,100),-60,120)">Battery Voltage</option>
             </select>
         </form>
     </div>
@@ -86,19 +86,10 @@
         Number.prototype.map = function (in_min, in_max, out_min, out_max) {
             return (this - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
         }
-        // linear color interpolation from red to green
-        function perc2color(perc) {
-            var r, g, b = 0;
-            if(perc < 50) {
-                r = 255;
-                g = Math.round(5.1 * perc);
-            }
-            else {
-                g = 255;
-                r = Math.round(510 - 5.10 * perc);
-            }
-            var h = r * 0x10000 + g * 0x100 + b * 0x1;
-            return '#' + ('000000' + h.toString(16)).slice(-6);
+        function perc2color(percentage, minHue = 0, maxHue = 180) {
+          const hue = percentage/100 * (maxHue - minHue) + minHue;
+          console.log(hue);
+          return `hsl(${hue}, 100%, 50%)`;
         }
 
     function sleep (time) {
@@ -129,7 +120,8 @@
 
                 for (let n_point in data) {
                     point = data[n_point]
-                    point["color"] = perc2color(eval(expression))
+                    console.log(point['battery_voltage'].map(160,210,0,100)+"%")
+                    point["color"] = eval(expression)
                     point["heading"] = (point["heading"] * 360 / 255),
                         point["solar_panel_voltage"] = point["solar_panel_voltage"] * 64 / 255,
                         point["battery_current"] = point["battery_current"] * 64 / 255
