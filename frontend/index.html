@@ -76,8 +76,8 @@
                     <option value="point['battery_voltage'].map(13.0,16.5,0,100)">Battery Voltage</option>
                     <option value="(point['battery_voltage']*point['battery_current']).map(0,100,100,0)">Power
                         Consumption</option><br>
-                        <option value="point['speed'].map(0,1.5,0,100)">Speed</option>
-                        <option value="point['average_thrust'].map(0,20,0,100)">Average Thrust</option>
+                    <option value="point['speed'].map(0,1.5,0,100)">Speed</option>
+                    <option value="point['average_thrust'].map(0,20,0,100)">Average Thrust</option>
                 </select>
                 <br>
                 <!-- <input type="text" v-model="expression" @change="replot()" /><br> -->
@@ -89,12 +89,17 @@
         </div>
         <div id="status-box">
             <span>Last update: {{ lastUpdated }}</span></br>
-            <span>Last solar power: {{ last ? last["solar_panel_power"].toFixed(2) : "N/A" }} W</span></br>
-            <span>Last battery voltage: {{ last ? last["battery_voltage"].toFixed(2) : "N/A" }} V</span></br>
-            <span>Last power consumption: {{ last ? (last["battery_voltage"] * last["battery_current"]).toFixed(2) :
-                "N/A"}} W</span></br>
-            <span>Last speed: {{ last ? last["speed"].toFixed(2) : "N/A"}} m/s</span><br>
-            <span>Total Distance: {{ totalDistance.toFixed(3) }} km</span>
+            <hr />
+            <strong>Last Segment:</strong><br />
+            <span>Speed: {{ last ? last["speed"].toFixed(2) : "N/A"}} m/s</span><br>
+            <span>Solar power: {{ last ? last["solar_panel_power"].toFixed(2) : "N/A" }} W</span></br>
+            <span>Battery voltage: {{ last ? last["battery_voltage"].toFixed(2) : "N/A" }} V</span></br>
+            <span>Power consumption: {{ last ? (last["battery_voltage"] * last["battery_current"]).toFixed(2) : "N/A"}}
+                W</span></br>
+            <span>Net energy: {{ last ? last["net_energy"].toFixed(2) : "N/A "}} kwh</span></br>
+            <hr />
+            <span>Total Distance: {{ totalDistance.toFixed(3 ) }} km</span></br>
+            <span>Total Energy: {{ totalEnergy.toFixed(2) }} Wh</span>
             </br>
         </div>
 
@@ -105,28 +110,14 @@
         Number.prototype.map = function (in_min, in_max, out_min, out_max) {
             return (this - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
         }
-        // linear color interpolation from red to green
-        function perc2color(perc) {
-            if (isNaN(perc)) {
-                perc = 0
+        function perc2color(percentage, minHue = 0, maxHue = 180) {
+            if (isNaN(percentage)) {
+                percentage = 0
             }
-            // cap at 100%
-            perc = Math.min(100, perc)
-            //cap at 0%
-            perc = Math.max(0, perc)
-            var r, g, b = 0;
-            if (perc < 50) {
-                r = 255;
-                g = Math.round(5.1 * perc);
-            }
-            else {
-                g = 255;
-                r = Math.round(510 - 5.10 * perc);
-            }
-            var h = r * 0x10000 + g * 0x100 + b * 0x1;
-            return '#' + ('000000' + h.toString(16)).slice(-6);
+            percentage = Math.min(Math.max(0, percentage), 100) // clamp between 0,100
+            const hue = percentage / 100 * (maxHue - minHue) + minHue;
+            return `hsl(${hue}, 100%, 50%)`;
         }
-
         Vue.createApp({
             el: "#app",
             data() {
@@ -139,25 +130,6 @@
                 };
             },
             methods: {
-                // from https://stackoverflow.com/questions/18883601/function-to-calculate-distance-between-two-coordinates
-                deg2rad(deg) {
-                    return deg * (Math.PI / 180)
-                },
-
-                getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
-                    var R = 6371; // Radius of the earth in km
-                    var dLat = this.deg2rad(lat2 - lat1);  // deg2rad below
-                    var dLon = this.deg2rad(lon2 - lon1);
-                    var a =
-                        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                        Math.cos(this.deg2rad(lat1)) * Math.cos(this.deg2rad(lat2)) *
-                        Math.sin(dLon / 2) * Math.sin(dLon / 2)
-                        ;
-                    var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-                    var d = R * c; // Distance in km
-                    return d;
-                },
-
                 fetchNewData() {
                     axios.get("/payloads?skip=0&limit=100000")
                         .then(result => {
@@ -180,21 +152,23 @@
                                 point["average_thrust"] = (Math.abs(point["left_motor_pwm"]) + Math.abs(point["right_motor_pwm"])) / 2
                                 // timedelta/speed calculation
                                 if (n_point > 0) {
-                                    const previous_point = data[n_point - 1]
-                                    const previous_time = previous_point["time_unix_usec"]
-                                    const time = point["time_unix_usec"]
-                                    point["timedelta_s"] = (time - previous_time) / 1e6
-                                    lat1 = previous_point["gps_lat"]
-                                    lon1 = previous_point["gps_lon"]
-                                    lat2 = point["gps_lat"]
-                                    lon2 = point["gps_lon"]
-                                    point["distance_travelled_m"] = this.getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) * 1000
-                                    point["speed"] = point["distance_travelled_m"] / point["timedelta_s"]
+                                    const last = data[n_point - 1]
+                                    const thisCoord = L.latLng(point["gps_lat"], point["gps_lon"])
+                                    const lastCoord = L.latLng(last["gps_lat"], last["gps_lon"])
+                                    point["distance_from_last"] = lastCoord.distanceTo(thisCoord)
+                                    point["time_since_last"] = (point["time_boot_ms"] - last["time_boot_ms"]) / 1000
+                                    point["speed"] = point["distance_from_last"] / point["time_since_last"]
+                                    point["total_distance"] = last["total_distance"] + point["distance_from_last"]
+                                    point["energy_generated"] = point["solar_panel_power"] * point["time_since_last"] / 3600
+                                    point["energy_consumed"] = point["battery_voltage"] * point["battery_current"] * point["time_since_last"] / 3600
+                                    point["net_energy"] = point["energy_generated"] - point["energy_consumed"]
+                                    point["total_energy_consumed"] = last["total_energy_consumed"] + point["energy_consumed"]
                                 }
                                 else {
-                                    point["timedelta_s"] = 0
-                                    point["distance_travelled_m"] = 0
+                                    point["time_since_last"] = 0
+                                    point["distance_from_last"] = 0
                                     point["speed"] = 0
+                                    point["energy_consumed"] = 0
                                 }
                                 this.dataSeries.push(point)
                             }
@@ -324,12 +298,20 @@
                     // total distance in km
                     let sum = 0
                     for (const point of this.currentSeries) {
-                        sum = sum + point["distance_travelled_m"]
+                        sum = sum + point["distance_from_last"]
                     }
                     return sum / 1000
-                    // return this.currentSeries.map(item => item.distance_travelled_m).reduce((prev, next) => prev + next);
+                },
+                totalEnergy() {
+                    // total distance in km
+                    let sum = 0
+                    for (const point of this.currentSeries) {
+                        sum = sum + point["energy_consumed"]
+                    }
+                    return sum
+                    // return this.currentSeries.map(item => item.distance_from_last).reduce((prev, next) => prev + next);
 
-                }
+                },
             }
         }).mount("#app")
     </script>
