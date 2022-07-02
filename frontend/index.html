@@ -65,15 +65,17 @@
         <form action="/generate" method="post">
             <label>Color code</label><br>
             <select id="color" onchange="replot(this)">
-                <option value="point['solar_panel_power'].map(0,150,0,100)">Solar Power</option>
+                <option value="point['solar_panel_power'].map(0,180,0,100)">Solar Power</option>
                 <option value="point['battery_voltage'].map(130,220,0,100)">Battery Voltage</option>
             </select>
         </form>
     </div>
     <div id="status-box">
         <span>Last update: </span><span id="last-update-time-span"></span></br>
-        <span>Current solar power: </span><span id="current-solar-power-span"></span><span>W</span></br>
-        <span>Current battery voltage: </span><span id="current-battery-voltage-span"></span><span>V</span></br>
+        <span>Last solar power: </span><span id="current-solar-power-span"></span><span> W</span></br>
+        <span>Last battery voltage: </span><span id="current-battery-voltage-span"></span><span> V</span></br>
+        <span>Last power consumption: </span><span id="current-power-consumption-span"></span><span> W</span>
+    </br>
     </div>
 
     <div id="map"></div>
@@ -118,6 +120,8 @@
                     document.getElementById('current-solar-power-span').innerHTML = currentSolarPowerSpan
                     const currentBatteryVoltage = parseFloat(lastMessage['battery_voltage']).toFixed(2)
                     document.getElementById('current-battery-voltage-span').innerHTML = currentBatteryVoltage
+                    const currentPower = (parseFloat(lastMessage['battery_voltage'])*parseFloat(lastMessage['battery_current'])).toFixed(2)
+                    document.getElementById('current-power-consumption-span').innerHTML = currentPower
                     const lastUpdateDateTime = new Date(parseFloat(lastMessage['time_unix_usec'] / 1000))
                     const timeSinceLastUpdate = moment(lastUpdateDateTime).fromNow();
                     document.getElementById('last-update-time-span').innerHTML = timeSinceLastUpdate
