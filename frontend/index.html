@@ -5,6 +5,7 @@
     <title>Solar Turtle Monitoring Room</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.8.0/leaflet.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.8.0/leaflet.js"></script>
+    <script src="./L.KML.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet"
         integrity="sha384-0evHe/X+R7YkIZDRvuzKMRqM+OrBnVFBL6DOitfPri4tjfHxaWutUpFmBp4vmVor" crossorigin="anonymous">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/js/bootstrap.bundle.min.js"
@@ -72,12 +73,12 @@
             <form @submit.prevent>
                 <label>Color code</label><br>
                 <select v-model="expression" id="color" @change="replot()">
-                    <option value="point['solar_panel_power'].map(0,180,0,100)">Solar Power</option>
-                    <option value="point['battery_voltage'].map(13.0,16.5,0,100)">Battery Voltage</option>
-                    <option value="(point['battery_voltage']*point['battery_current']).map(0,100,100,0)">Power
+                    <option value="perc2color(point['solar_panel_power'].map(0,180,0,100),0,180)">Solar Power</option>
+                    <option value="perc2color(point['battery_voltage'].map(14.0,16.5,0,100),-60,120)">Battery Voltage</option>
+                    <option value="perc2color((point['battery_voltage']*point['battery_current']).map(0,100,100,0))">Power
                         Consumption</option><br>
-                    <option value="point['speed'].map(0,1.5,0,100)">Speed</option>
-                    <option value="point['average_thrust'].map(0,20,0,100)">Average Thrust</option>
+                    <option value="perc2color(point['speed'].map(0,1.5,0,100))">Speed</option>
+                    <option value="perc2color(point['average_thrust'].map(0,20,0,100))">Average Thrust</option>
                 </select>
                 <br>
                 <!-- <input type="text" v-model="expression" @change="replot()" /><br> -->
@@ -91,15 +92,15 @@
             <span>Last update: {{ lastUpdated }}</span></br>
             <hr />
             <strong>Last Segment:</strong><br />
-            <span>Speed: {{ last ? last["speed"].toFixed(2) : "N/A"}} m/s</span><br>
-            <span>Solar power: {{ last ? last["solar_panel_power"].toFixed(2) : "N/A" }} W</span></br>
+            <span>Speed: {{ last ? last["speed"].toFixed(1) : "N/A"}} m/s</span><br>
+            <span>Solar power: {{ last ? last["solar_panel_power"].toFixed(0) : "N/A" }} W</span></br>
             <span>Battery voltage: {{ last ? last["battery_voltage"].toFixed(2) : "N/A" }} V</span></br>
-            <span>Power consumption: {{ last ? (last["battery_voltage"] * last["battery_current"]).toFixed(2) : "N/A"}}
+            <span>Power consumption: {{ last ? (last["battery_voltage"] * last["battery_current"]).toFixed(1) : "N/A"}}
                 W</span></br>
-            <span>Net energy: {{ last ? last["net_energy"].toFixed(2) : "N/A "}} kwh</span></br>
+            <span>Net energy: {{ last ? last["net_energy"] > 0 ? "+" : "" : "" }}{{ last ? last["net_energy"].toFixed(0) : "N/A "}} Wh</span></br>
             <hr />
-            <span>Total Distance: {{ totalDistance.toFixed(3 ) }} km</span></br>
-            <span>Total Energy: {{ totalEnergy.toFixed(2) }} Wh</span>
+            <span>Total Distance: {{ totalDistance.toFixed(1) }} km</span></br>
+            <span>Total Energy: {{ totalEnergy.toFixed(0) }} Wh</span>
             </br>
         </div>
 
@@ -123,7 +124,7 @@
             data() {
                 return {
                     dataSeries: [],
-                    expression: "point['solar_panel_power'].map(0,180,0,100)",
+                    expression: "perc2color(point['solar_panel_power'].map(0,180,0,100),0,180)",
                     numberOfPoints: -1,
                     last: null,
                     currentSeries: [],
@@ -169,6 +170,8 @@
                                     point["distance_from_last"] = 0
                                     point["speed"] = 0
                                     point["energy_consumed"] = 0
+                                    point["total_energy_consumed"] = 0
+                                    point["total_distance"] = 0
                                 }
                                 this.dataSeries.push(point)
                             }
@@ -187,7 +190,7 @@
                     }
                     for (let n_point in this.currentSeries) {
                         point = this.currentSeries[n_point]
-                        point["color"] = perc2color(eval(this.expression))
+                        point["color"] = eval(this.expression)
 
                     }
                     this.layer.clearLayers();
@@ -195,6 +198,7 @@
                         maxZoom: 20,
                         subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
                     }).addTo(this.layer);
+
                     for (let n_point = 0; n_point < this.currentSeries.length - 2; n_point++) {
                         point = this.currentSeries[n_point]
                         next_point = this.currentSeries[n_point + 1]
@@ -223,6 +227,16 @@
 
                         marker.addTo(this.layer);
                     }
+                    fetch('mission.kml')
+                        .then(res => res.text())
+                        .then(kmltext => {
+                            // Create new kml overlay
+                            const parser = new DOMParser();
+                            const kml = parser.parseFromString(kmltext, 'text/xml');
+                            const track = new L.KML(kml);
+                            this.map.addLayer(track);
+
+                        });
                 },
 
 
