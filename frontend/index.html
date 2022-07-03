@@ -99,10 +99,12 @@
                 W</span></br>
             <span>Net energy: {{ last ? last["net_energy"] > 0 ? "+" : "" : "" }}{{ last ? last["net_energy"].toFixed(0) : "N/A "}} Wh</span></br>
             <hr />
+            <span>Total Speed: {{ totalSpeed.toFixed(1) }} m/s</span></br>
             <span>Total Distance: {{ totalDistanceKm.toFixed(1) }} km</span></br>
             <span>Total Energy: {{ totalEnergy.toFixed(0) }} Wh</span></br>
             <span>Total Mission percentage: {{ missionPercentage.toFixed(2) }} %</span></br>
             <span>Total Time: {{ totalTime }}</span></br>
+            <span>Distance to Hawaii: {{ distanceToHawaiiKm ? distanceToHawaiiKm.toFixed(2) : "N/A" }} km</span></br>
             <span>Estimated arrival time: {{ estimatedTimeToArrive}}</span>
             </br>
         </div>
@@ -323,11 +325,16 @@
                 missionPercentage() {
                     return 100.0 * this.totalDistanceKm / this.missionTotalDistanceKm
                 },
+                totalSpeed() {
+                    // m/s
+                    return (this.totalDistanceKm*1000) / (this.totalTimeMinutes*60)
+                },
                 lastUpdated() {
                     return this.last ? moment(new Date(parseFloat(this.last['time_unix_usec'] / 1000))).fromNow() : "n/a"
                 },
                 estimatedTimeToArrive() {
-                    return formatTimeExtended((100-this.missionPercentage)*this.totalTimeMinutes)
+                    const timeInSeconds = this.distanceToHawaiiKm*1000/this.totalSpeed
+                    return formatTimeExtended(timeInSeconds / 60)
                 },
                 missionTotalDistanceKm() {
                     return this.kmlCoordinates
@@ -348,6 +355,14 @@
                 },
                 totalTime() {
                     return formatTimeExtended(this.totalTimeMinutes)
+                },
+                distanceToHawaiiKm() {
+                    const final = this.kmlCoordinates[this.kmlCoordinates.length - 1]
+                    const current = this.boatCoordinates[this.boatCoordinates.length - 1]
+                    if(final === undefined || current === undefined) {
+                        return undefined
+                    }
+                    return current.distanceTo(final) / 1000
                 },
                 totalDistanceKm() {
                     let sum = 0
