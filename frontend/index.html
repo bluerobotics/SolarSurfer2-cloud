@@ -101,6 +101,7 @@
             <hr />
             <span>Total Distance: {{ totalDistanceKm.toFixed(1) }} km</span></br>
             <span>Total Energy: {{ totalEnergy.toFixed(0) }} Wh</span></br>
+            <span>Total Time: {{ totalTime }}</span></br>
             <span>Total Mission percentage: {{ missionPercentage.toFixed(2) }} %</span>
             </br>
         </div>
@@ -325,6 +326,20 @@
                                 value.distanceTo(this.kmlCoordinates[index])
                         )
                         .reduce((a, b) => a + b, 0) / 1000;
+                },
+                totalTimeMinutes() {
+                    const first = this.currentSeries[0]
+                    if (first === undefined) {
+                        return 0
+                    }
+
+                    return (Date.now() - parseFloat(first['time_unix_usec'] / 1000)) / (60e3)
+                },
+                totalTime() {
+                    const days = Math.floor(this.totalTimeMinutes / (24 * 60))
+                    const hours = Math.floor((this.totalTimeMinutes / 60) % 24)
+                    const minutes = Math.floor(this.totalTimeMinutes % 60)
+                    return `${days} days, ${hours} hours, ${minutes} minutes`
                 },
                 totalDistanceKm() {
                     let sum = 0
