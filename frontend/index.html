@@ -100,7 +100,8 @@
             <span>Net energy: {{ last ? last["net_energy"] > 0 ? "+" : "" : "" }}{{ last ? last["net_energy"].toFixed(0) : "N/A "}} Wh</span></br>
             <hr />
             <span>Total Distance: {{ totalDistance.toFixed(1) }} km</span></br>
-            <span>Total Energy: {{ totalEnergy.toFixed(0) }} Wh</span>
+            <span>Total Energy: {{ totalEnergy.toFixed(0) }} Wh</span></br>
+            <span>Total Mission percentage: {{ missionPercentage.toFixed(2) }} %</span>
             </br>
         </div>
 
@@ -128,6 +129,8 @@
                     numberOfPoints: -1,
                     last: null,
                     currentSeries: [],
+                    boatCoordinates: [],
+                    kmlCoordinates: [],
                 };
             },
             methods: {
@@ -139,6 +142,8 @@
                             if (this.numberOfPoints === -1) {
                                 this.numberOfPoints = total
                             }
+
+                            this.boatCoordinates = data.map(point => L.latLng(point["gps_lat"], point["gps_lon"]))
 
                             this.dataSeries = []
                             for (let n_point in data) {
@@ -234,6 +239,7 @@
                             const parser = new DOMParser();
                             const kml = parser.parseFromString(kmltext, 'text/xml');
                             const track = new L.KML(kml);
+                            this.kmlCoordinates = track.latLngs
                             this.map.addLayer(track);
 
                         });
@@ -305,8 +311,20 @@
                 setInterval(this.fetchNewData, 30000);
             },
             computed: {
+                missionPercentage() {
+                    return 100.0 * this.totalDistance / this.missionTotalDistanceKm
+                },
                 lastUpdated() {
                     return this.last ? moment(new Date(parseFloat(this.last['time_unix_usec'] / 1000))).fromNow() : "n/a"
+                },
+                missionTotalDistanceKm() {
+                    return this.kmlCoordinates
+                        .slice(1)
+                        .map(
+                            (value, index) =>
+                                value.distanceTo(this.kmlCoordinates[index])
+                        )
+                        .reduce((a, b) => a + b, 0) / 1000;
                 },
                 totalDistance() {
                     // total distance in km
