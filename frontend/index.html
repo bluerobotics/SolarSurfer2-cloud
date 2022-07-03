@@ -99,7 +99,7 @@
                 W</span></br>
             <span>Net energy: {{ last ? last["net_energy"] > 0 ? "+" : "" : "" }}{{ last ? last["net_energy"].toFixed(0) : "N/A "}} Wh</span></br>
             <hr />
-            <span>Total Distance: {{ totalDistance.toFixed(1) }} km</span></br>
+            <span>Total Distance: {{ totalDistanceKm.toFixed(1) }} km</span></br>
             <span>Total Energy: {{ totalEnergy.toFixed(0) }} Wh</span></br>
             <span>Total Mission percentage: {{ missionPercentage.toFixed(2) }} %</span>
             </br>
@@ -312,7 +312,7 @@
             },
             computed: {
                 missionPercentage() {
-                    return 100.0 * this.totalDistance / this.missionTotalDistanceKm
+                    return 100.0 * this.totalDistanceKm / this.missionTotalDistanceKm
                 },
                 lastUpdated() {
                     return this.last ? moment(new Date(parseFloat(this.last['time_unix_usec'] / 1000))).fromNow() : "n/a"
@@ -326,8 +326,7 @@
                         )
                         .reduce((a, b) => a + b, 0) / 1000;
                 },
-                totalDistance() {
-                    // total distance in km
+                totalDistanceKm() {
                     let sum = 0
                     for (const point of this.currentSeries) {
                         sum = sum + point["distance_from_last"]
