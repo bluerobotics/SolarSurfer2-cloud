@@ -99,11 +99,12 @@
                 W</span></br>
             <span>Net energy: {{ last ? last["net_energy"] > 0 ? "+" : "" : "" }}{{ last ? last["net_energy"].toFixed(0) : "N/A "}} Wh</span></br>
             <hr />
-            <span>Total Speed: {{ totalSpeed.toFixed(1) }} m/s</span></br>
+            <span>Average speed: {{ totalSpeed.toFixed(1) }} m/s</span></br>
             <span>Total Distance: {{ totalDistanceKm.toFixed(1) }} km</span></br>
             <span>Total Energy: {{ totalEnergy.toFixed(0) }} Wh</span></br>
-            <span>Total Mission percentage: {{ missionPercentage.toFixed(2) }} %</span></br>
+            <span>Total Mission percentage: {{ missionPercentage ? missionPercentage.toFixed(2) : "N/A" }} %</span></br>
             <span>Total Time: {{ totalTime }}</span></br>
+            <span>Distance from Home: {{ distanceFromHomeKm ? distanceFromHomeKm.toFixed(2) : "N/A" }} km</span></br>
             <span>Distance to Hawaii: {{ distanceToHawaiiKm ? distanceToHawaiiKm.toFixed(2) : "N/A" }} km</span></br>
             <span>Estimated arrival time: {{ estimatedTimeToArrive}}</span>
             </br>
@@ -323,7 +324,7 @@
             },
             computed: {
                 missionPercentage() {
-                    return 100.0 * this.totalDistanceKm / this.missionTotalDistanceKm
+                    return 100*(1 - this.distanceToHawaiiKm / (this.distanceFromHomeKm + this.distanceToHawaiiKm))
                 },
                 totalSpeed() {
                     // m/s
@@ -363,6 +364,14 @@
                         return undefined
                     }
                     return current.distanceTo(final) / 1000
+                },
+                distanceFromHomeKm() {
+                    const first = this.boatCoordinates[0]
+                    const current = this.boatCoordinates[this.boatCoordinates.length - 1]
+                    if(first === undefined || current === undefined) {
+                        return undefined
+                    }
+                    return first.distanceTo(current) / 1000
                 },
                 totalDistanceKm() {
                     let sum = 0
