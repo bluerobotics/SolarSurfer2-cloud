@@ -12,6 +12,8 @@ from crud import create_rockblock_message, get_last_rockblock_message, get_rockb
 import models
 from sqlalchemy.orm import Session
 from database import SessionLocal, engine
+from SolarSurfer2.services.sats_comm.messages import deserialize
+from weather import get_weather_data
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -67,6 +69,12 @@ async def rockblock_messages_route(skip: int = 0, limit: int = 100, db: Session 
 async def payloads_route(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)) -> Any:
     return get_payloads(db, skip, limit)
 
+@app.get("/weather")
+async def weather(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)) -> Any:
+    last = get_last_rockblock_message(db)
+    parsed_message = deserialize(bytes.fromhex(last.data.decode()))
+    lat, lon = parsed_message["lattitude"], parsed_message["longitude"]
+    return get_weather_data(lat, lon)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
