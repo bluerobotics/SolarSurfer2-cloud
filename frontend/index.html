@@ -101,8 +101,9 @@
             <hr />
             <span>Total Distance: {{ totalDistanceKm.toFixed(1) }} km</span></br>
             <span>Total Energy: {{ totalEnergy.toFixed(0) }} Wh</span></br>
+            <span>Total Mission percentage: {{ missionPercentage.toFixed(2) }} %</span></br>
             <span>Total Time: {{ totalTime }}</span></br>
-            <span>Total Mission percentage: {{ missionPercentage.toFixed(2) }} %</span>
+            <span>Estimated arrival time: {{ estimatedTimeToArrive}}</span>
             </br>
         </div>
 
@@ -121,6 +122,13 @@
             const hue = percentage / 100 * (maxHue - minHue) + minHue;
             return `hsl(${hue}, 100%, 50%)`;
         }
+        function formatTimeExtended(timeMinutes) {
+            const days = Math.floor(timeMinutes / (24 * 60))
+            const hours = Math.floor((timeMinutes / 60) % 24)
+            const minutes = Math.floor(timeMinutes % 60)
+            return `${days} days, ${hours} hours, ${minutes} minutes`
+        }
+
         Vue.createApp({
             el: "#app",
             data() {
@@ -318,6 +326,9 @@
                 lastUpdated() {
                     return this.last ? moment(new Date(parseFloat(this.last['time_unix_usec'] / 1000))).fromNow() : "n/a"
                 },
+                estimatedTimeToArrive() {
+                    return formatTimeExtended((100-this.missionPercentage)*this.totalTimeMinutes)
+                },
                 missionTotalDistanceKm() {
                     return this.kmlCoordinates
                         .slice(1)
@@ -336,10 +347,7 @@
                     return (Date.now() - parseFloat(first['time_unix_usec'] / 1000)) / (60e3)
                 },
                 totalTime() {
-                    const days = Math.floor(this.totalTimeMinutes / (24 * 60))
-                    const hours = Math.floor((this.totalTimeMinutes / 60) % 24)
-                    const minutes = Math.floor(this.totalTimeMinutes % 60)
-                    return `${days} days, ${hours} hours, ${minutes} minutes`
+                    return formatTimeExtended(this.totalTimeMinutes)
                 },
                 totalDistanceKm() {
                     let sum = 0
