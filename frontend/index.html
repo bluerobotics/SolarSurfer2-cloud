@@ -334,14 +334,11 @@
                     return sum / 1000
                 },
                 totalEnergy() {
-                    // total distance in km
                     let sum = 0
                     for (const point of this.currentSeries) {
                         sum = sum + point["energy_consumed"]
                     }
                     return sum
-                    // return this.currentSeries.map(item => item.distance_from_last).reduce((prev, next) => prev + next);
-
                 },
             }
         }).mount("#app")
