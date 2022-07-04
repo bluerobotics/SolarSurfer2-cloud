@@ -155,6 +155,8 @@
                                 this.numberOfPoints = total
                             }
 
+                            data.sort((p1, p0) => p1["time_unix_usec"] - p0["time_unix_usec"])
+
                             this.boatCoordinates = data.map(point => L.latLng(point["gps_lat"], point["gps_lon"]))
 
                             this.dataSeries = []
