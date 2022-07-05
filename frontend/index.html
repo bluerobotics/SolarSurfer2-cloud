@@ -2,7 +2,7 @@
 <meta http-equiv="refresh" content="600">
 
 <head>
-    <title>Solar Turtle Monitoring Room</title>
+    <title>SolarSurfer Tracker 2.0</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.8.0/leaflet.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.8.0/leaflet.js"></script>
     <script src="./L.KML.js"></script>
@@ -15,6 +15,10 @@
     <script src="https://unpkg.com/vue@3"></script>
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.3/font/bootstrap-icons.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
+    <script src="https://kit.fontawesome.com/d305db2dc0.js" crossorigin="anonymous"></script>
     <style>
         #map {
             width: 100%;
@@ -24,6 +28,7 @@
     <style type="text/css">
         html,
         body {
+            font-family: Roboto;
             height: 100%;
             margin: 0;
             width: 100%
@@ -38,16 +43,42 @@
             width: 100%;
         }
 
-        #points-color-selector {
+        #brand {
             position: absolute;
             z-index: 2000;
             width: auto;
-            background-color: #2699D0;
-            color: white;
+            background-color: #FFFFFF;
+            color: black;
             margin: 10px;
-            margin-top: 12vh;
+            margin-top: 1vh;
             border-radius: 10px;
             padding: 10px;
+            width: 280px;
+        }
+
+        .brand-img {
+            display: block;
+            max-width: 250px;
+        }
+
+        .title {
+            font-size: 1.2em;
+            font-weight: bold;
+            display: block;
+        }
+
+        .detail-label {
+            font-weight: bold;
+            font-size: 0.8em;
+            display: inline-block;
+            width: 75px;
+        }
+
+        .detail-label-data {
+            font-weight: bold;
+            font-size: 0.8em;
+            display: inline-block;
+            width: 170px;
         }
 
         #status-box {
@@ -57,9 +88,10 @@
             background-color: #2699D0;
             color: white;
             margin: 10px;
-            margin-top: 28vh;
+            margin-top: 40vh;
             border-radius: 10px;
             padding: 10px;
+            width: 280px;
         }
 
         #weather-box {
@@ -73,60 +105,102 @@
             right: 1vh;
             border-radius: 10px;
             padding: 10px;
+            width: 280px;
+        }
+
+        #color-box {
+            position: absolute;
+            z-index: 2000;
+            width: auto;
+            background-color: #2699D0;
+            color: white;
+            margin: 10px;
+            margin-top: 80vh;
+            right: 1vh;
+            border-radius: 10px;
+            padding: 10px;
+            width: 280px;
         }
 
         #radius {
             width: 100%;
         }
+
+        #last-segment-indicators-top {
+            display: flex;
+            justify-content: space-between;
+            /* grid-template-columns: auto auto auto;
+            grid-gap: 10px; */
+        }
+        #last-segment-indicators-bot {
+            display: flex;
+            justify-content: space-around;
+            /* grid-template-columns: auto auto;
+            grid-gap: 10px; */
+        }
+
     </style>
 </head>
 
 <body>
     <div id="app">
-        <div id="points-color-selector">
-            <form @submit.prevent>
-                <label>Color code</label><br>
-                <select v-model="expression" id="color" @change="replot()">
-                    <option value="perc2color(point['solar_panel_power'].map(0,180,0,100),0,180)">Solar Power</option>
-                    <option value="perc2color(point['battery_voltage'].map(14.0,16.5,0,100),-60,120)">Battery Voltage</option>
-                    <option value="perc2color((point['battery_voltage']*point['battery_current']).map(0,100,100,0))">Power
-                        Consumption</option><br>
-                    <option value="perc2color(point['speed'].map(0,1.5,0,100))">Speed</option>
-                    <option value="perc2color(point['average_thrust'].map(0,20,0,100))">Average Thrust</option>
-                </select>
-                <br>
-                <!-- <input type="text" v-model="expression" @change="replot()" /><br> -->
-                <label>Points: {{numberOfPoints}}</label><br>
-                <input type="range" min="10" :max="dataSeries.length" step="1" v-model="numberOfPoints"
-                    @change="replot()" style="width: 100%;">
-
-            </form>
+        <div id="brand">
+            <a href="https://bluerobotics.com"><img src="https://bluerobotics.com/wp-content/uploads/2020/01/BlueRobotics-Logo-Blue-Black.png" class="brand-img" /></a>
+            <hr />
+            <span class="title">SolarSurfer Tracker 2.0</span>
+            <span class="detail-label">Vehicle:</span> <em>Solar Turtle</em><br />
+            <span class="detail-label">Departed:</span> 1 July 2022<br />
+            <span class="detail-label">Origin:</span> Los Angeles, CA, USA<br />
+            <span class="detail-label">Destination:</span> Kona, Hawaii, USA<br />
+            <span class="detail-label">ETA:</span> 45-60 days
         </div>
         <div id="status-box">
             <span>Last update: {{ lastUpdated }}</span></br>
             <hr />
             <strong>Last Segment:</strong><br />
-            <span>Speed: {{ last ? last["speed"].toFixed(1) : "N/A"}} m/s</span><br>
-            <span>Solar power: {{ last ? last["solar_panel_power"].toFixed(0) : "N/A" }} W</span></br>
-            <span>Battery voltage: {{ last ? last["battery_voltage"].toFixed(2) : "N/A" }} V</span></br>
-            <span>Power consumption: {{ last ? (last["battery_voltage"] * last["battery_current"]).toFixed(1) : "N/A"}}
-                W</span></br>
-            <span>Net energy: {{ last ? last["net_energy"] > 0 ? "+" : "" : "" }}{{ last ? last["net_energy"].toFixed(0) : "N/A "}} Wh</span></br>
+            <div id="last-segment-indicators-top">
+                <span><i title="Speed" class="fa-solid fa-gauge-high"></i> {{ last ? last["speed"].toFixed(1) : "N/A"}} m/s</span>
+                <span><i title="Solar power" class="fa-solid fa-solar-panel"></i> {{ last ? last["solar_panel_power"].toFixed(0) : "N/A" }} W</span>
+                <span><i title="Battery voltage" class="fa-solid fa-battery-three-quarters"></i> {{ last ? last["battery_voltage"].toFixed(2) : "N/A" }} V</span>
+            </div>
+            <div id="last-segment-indicators-bot">
+                <span><i title="Power consumption" class="fa-solid fa-gas-pump"></i> {{ last ? (last["battery_voltage"] * last["battery_current"]).toFixed(1) : "N/A"}} W</span>
+                <span><i title="Net energy" class="fa-solid fa-bolt"></i> {{ last ? last["net_energy"] > 0 ? "+" : "" : "" }}{{ last ? last["net_energy"].toFixed(0) : "N/A "}} Wh</span>
+            </div>
             <hr />
-            <span>Average speed: {{ totalSpeed.toFixed(1) }} m/s</span></br>
-            <span>Total Distance: {{ totalDistanceKm.toFixed(1) }} km</span></br>
-            <span>Total Energy: {{ totalEnergy.toFixed(0) }} Wh</span></br>
-            <span>Total Mission percentage: {{ missionPercentage ? missionPercentage.toFixed(2) : "N/A" }} %</span></br>
-            <span>Total Time: {{ totalTime }}</span></br>
-            <span>Distance from Home: {{ distanceFromHomeKm ? distanceFromHomeKm.toFixed(2) : "N/A" }} km</span></br>
-            <span>Distance to Hawaii: {{ distanceToHawaiiKm ? distanceToHawaiiKm.toFixed(2) : "N/A" }} km</span></br>
-            <span>Estimated arrival time: {{ estimatedTimeToArrive}}</span>
-            </br>
+            <span class="detail-label-data">Average speed: </span><span>{{ totalSpeed.toFixed(1) }} m/s</span></br>
+            <span class="detail-label-data">Total Distance: </span><span>{{ totalDistanceKm.toFixed(1) }} km</span></br>
+            <span class="detail-label-data">Total Energy: </span><span>{{ totalEnergy.toFixed(0) }} Wh</span></br>
+            <span class="detail-label-data">Total Mission percentage: </span><span>{{ missionPercentage ? missionPercentage.toFixed(2) : "N/A" }} %</span></br>
+            <span class="detail-label-data">Total Time: </span><span>{{ totalTime }}</span></br>
+            <span class="detail-label-data">Distance from Home: </span><span>{{ distanceFromHomeKm ? distanceFromHomeKm.toFixed(2) : "N/A" }} km</span></br>
+            <span class="detail-label-data">Distance to Hawaii: </span><span>{{ distanceToHawaiiKm ? distanceToHawaiiKm.toFixed(2) : "N/A" }} km</span></br>
+            <span class="detail-label-data">Estimated arrival time: </span><span>{{ estimatedTimeToArrive}}</span>
         </div>
         <div id="weather-box">
             <span><strong>Local weather forecast</strong></span></br>
             <span>Wind: <i :style="`transform: rotate(${weatherData.winddir}deg); display:inline-block;`" class="bi bi-arrow-down"></i> {{weatherData.windspeed}} km/h</span>
+        </div>
 
+        <div id="color-box">
+            <strong>Color Scale:</strong><br />
+            <div id="points-color-selector">
+                <form @submit.prevent>
+                    <select v-model="expression" id="color" @change="replot()">
+                        <option value="perc2color(point['solar_panel_power'].map(0,180,0,100),0,180)">Solar Power</option>
+                        <option value="perc2color(point['battery_voltage'].map(14.0,16.5,0,100),-60,120)">Battery Voltage</option>
+                        <option value="perc2color((point['battery_voltage']*point['battery_current']).map(0,100,100,0))">Power
+                            Consumption</option><br>
+                        <option value="perc2color(point['speed'].map(0,1.5,0,100))">Speed</option>
+                        <option value="perc2color(point['average_thrust'].map(0,20,0,100))">Average Thrust</option>
+                    </select>
+                    <br>
+                    <!-- <input type="text" v-model="expression" @change="replot()" /><br> -->
+                    <label>Points: {{numberOfPoints}}</label><br>
+                    <input type="range" min="10" :max="dataSeries.length" step="1" v-model="numberOfPoints"
+                        @change="replot()" style="width: 100%;">
+                </form>
+            </div>
         </div>
 
         <div id="map"></div>
@@ -363,6 +437,9 @@
                     // m/s
                     return (this.totalDistanceKm*1000) / (this.totalTimeMinutes*60)
                 },
+                lastUpdateTime() {
+                    return this.last ? new Date(parseFloat(this.last['time_unix_usec'] / 1000)) : "n/a"
+                },
                 lastUpdated() {
                     return this.last ? moment(new Date(parseFloat(this.last['time_unix_usec'] / 1000))).fromNow() : "n/a"
                 },
@@ -385,7 +462,7 @@
                         return 0
                     }
 
-                    return (Date.now() - parseFloat(first['time_unix_usec'] / 1000)) / (60e3)
+                    return (this.lastUpdateTime - parseFloat(first['time_unix_usec'] / 1000)) / (60e3)
                 },
                 totalTime() {
                     return formatTimeExtended(this.totalTimeMinutes)
