@@ -8,7 +8,6 @@ from schemas import RockblockMessageBase
 
 
 ROCKBLOCK_WEBHOOK_ROUTE = "http://127.0.0.1:8000/rockblock-messages"
-# ROCKBLOCK_WEBHOOK_ROUTE = "http://143.198.58.63:8000/rockblock-messages"
 
 fake = Faker()
 

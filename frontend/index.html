@@ -195,7 +195,6 @@
                         <option value="perc2color(point['average_thrust'].map(0,20,0,100))">Average Thrust</option>
                     </select>
                     <br>
-                    <!-- <input type="text" v-model="expression" @change="replot()" /><br> -->
                     <label>Points: {{numberOfPoints}}</label><br>
                     <input type="range" min="10" :max="dataSeries.length" step="1" v-model="numberOfPoints"
                         @change="replot()" style="width: 100%;">
