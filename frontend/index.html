@@ -306,7 +306,10 @@
                     this.currentSeries = this.dataSeries.slice(this.dataSeries.length - this.numberOfPoints)
                     if (this.map == undefined) {
                         const last = this.currentSeries[this.currentSeries.length - 1]
-                        this.map = L.map('map').setView([last["gps_lat"], last["gps_lon"]], 13);
+
+                        // Remove default zoom control and add one to the bottom left
+                        this.map = L.map('map', {zoomControl: false}).setView([last["gps_lat"], last["gps_lon"]], 13);
+                        L.control.zoom({position: 'bottomleft'}).addTo(this.map);
                         this.layer = L.layerGroup()
                         this.layer.addTo(this.map);
                     }
